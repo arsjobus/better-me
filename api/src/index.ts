@@ -1,21 +1,43 @@
-import { Redis } from '@upstash/redis';
+import { createClient, RedisClientType } from 'redis';
 import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import jwt from 'jsonwebtoken';
+import { jwtVerify, SignJWT } from 'jose';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = Number(process.env.PORT || 3000);
 
-const redis = new Redis({
-    url: process.env.REDIS_URL,
-    token: process.env.REDIS_TOKEN || "",
+const redis: RedisClientType = createClient({
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    password: process.env.REDIS_TOKEN || undefined,
 });
+
+redis.on('error', (err) => console.error('Redis Client Error', err));
+
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET is required to sign or verify tokens');
+    }
+    return new TextEncoder().encode(secret);
+};
 
 app.use(cors());
 app.use(express.json());
+
+const startServer = async () => {
+    await redis.connect();
+    app.listen(port, () => {
+        console.log(`API running on http://localhost:${port}`);
+    });
+};
+
+startServer().catch((error) => {
+    console.error('Failed to start API server:', error);
+    process.exit(1);
+});
 
 interface Task {
     id: number;
@@ -26,17 +48,18 @@ interface Task {
 }
 
 // Middleware to check for JWT token
-const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
+const authenticateJWT = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.header('Authorization')?.split(' ')[1]; // Bearer <token>
-    if (token) {
-        jwt.verify(token, process.env.JWT_SECRET as string, (err: any, user: any) => {
-            if (err) {
-                return res.sendStatus(403);
-            }
-            next();
-        });
-    } else {
+    if (!token) {
         res.sendStatus(401); // Unauthorized
+        return;
+    }
+
+    try {
+        await jwtVerify(token, getJwtSecret());
+        next();
+    } catch {
+        res.sendStatus(403);
     }
 };
 
@@ -49,7 +72,11 @@ app.get('/', (req: Request, res: Response) => {
 app.post('/auth/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-        const token = jwt.sign({ username }, process.env.JWT_SECRET as string, { expiresIn: '8h' });
+        const token = await new SignJWT({ username })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setIssuedAt()
+            .setExpirationTime('8h')
+            .sign(getJwtSecret());
         return res.json({ token });
     }
     return res.sendStatus(403); // Forbidden
@@ -62,8 +89,10 @@ app.get('/tasks', authenticateJWT, async (req: Request, res: Response) => {
         if (taskKeys.length === 0) {
             return res.json({ tasks: [] });
         }
-        const taskValues = await redis.mget(taskKeys);
-        const tasks = taskValues.map((task) => task ? task : {}).filter(Boolean);
+        const taskValues = await redis.mGet(taskKeys);
+        const tasks = taskValues
+            .filter((task): task is string => typeof task === 'string')
+            .map((task) => JSON.parse(task));
         res.json({ tasks });
     } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -95,7 +124,7 @@ app.put('/tasks/:id', authenticateJWT, async (req: Request, res: Response) => {
         if (!taskData) {
             return res.status(404).json({ message: 'Task not found' });
         }
-        const task: Task = taskData as Task;
+        const task = JSON.parse(taskData as string) as Task;
         task.completed = updatedTaskData.completed;
         task.last_updated = updatedTaskData.last_updated;
         task.next_timeout = updatedTaskData.next_timeout;

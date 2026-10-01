@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app" class="min-h-screen bg-gradient-to-br from-sky-50 via-slate-50 to-amber-50 text-slate-800">
     <TheLogin v-if="!isLoggedIn" @login-success="handleLoginSuccess" />
     <TaskListMorning v-else />
   </div>
@@ -36,9 +36,3 @@ export default defineComponent({
   }
 });
 </script>
-
-<style lang="scss" scoped>
-#app {
-  text-align: center;
-}
-</style>

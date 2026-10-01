@@ -1,0 +1,51 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: better-me-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  api:
+    build:
+      context: ./api
+    container_name: better-me-api
+    depends_on:
+      - redis
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      REDIS_TOKEN: ""
+      JWT_SECRET: change-me-super-secret
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ./app
+    container_name: better-me-app
+    depends_on:
+      - api
+    ports:
+      - "8080:8080"
+    environment:
+      VUE_APP_API_BASE_URL: http://localhost:3000
+    restart: unless-stopped
+
+  ollama:
+    build:
+      context: ./coach
+    container_name: better-me-ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+
+volumes:
+  redis-data:

@@ -1,55 +1,81 @@
 <template>
-  <div class="window active checklist">
-    <div class="title-bar">
-      <div class="title-bar-text">To-Do List</div>
-      <div class="title-bar-controls">
-        <button aria-label="Minimize"></button>
-        <button aria-label="Maximize"></button>
-        <button aria-label="Close"></button>
+  <main class="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
+    <header class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+      <div>
+        <p class="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">Your daily reset</p>
+        <h1 class="font-serif text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Make room for what matters.</h1>
+        <p class="mt-2 text-sm text-slate-500">Small, consistent steps add up.</p>
       </div>
-    </div>
-    <div class="window-body has-space">
-      <ul class="has-scrollbar" style="height: 70vh; overflow: auto">
-        <li 
-          v-for="(task, index) in tasks" 
-          :key="index" 
-          :class="{ 'completed': task.completed, 'field-row': true, }" 
+      <div class="inline-flex w-fit items-center gap-2 rounded-full border border-teal-200 bg-white/80 px-4 py-2 text-sm shadow-sm">
+        <span class="font-semibold text-teal-800">{{ completedTasks }}</span>
+        <span class="text-slate-500">of {{ totalTasks }} complete</span>
+      </div>
+    </header>
+
+    <section class="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl shadow-slate-900/5">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+        <h2 class="text-sm font-semibold text-slate-800">Today's tasks</h2>
+        <span class="text-xs font-medium text-slate-400">{{ totalTasks }} {{ totalTasks === 1 ? 'task' : 'tasks' }}</span>
+      </div>
+      <ul class="max-h-[52vh] divide-y divide-slate-100 overflow-y-auto">
+        <li
+          v-for="(task, index) in tasks"
+          :key="index"
+          class="group flex items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
+          :class="{ 'bg-teal-50/40': task.completed }"
         >
-          <div>
+          <div class="flex min-w-0 items-start gap-3">
             <input
               :id="task.id.toString()"
               type="checkbox"
               :checked="task.completed"
               @change="toggleTaskCompletion(index)"
-              class="checkbox"
+              class="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-slate-300 accent-teal-700 focus:ring-teal-600"
             />
-            <label :for="task.id.toString()" class="task-title" :class="{ 'line-through': task.completed }">{{ task.title }}</label>
+            <label
+              :for="task.id.toString()"
+              class="min-w-0 cursor-pointer break-words text-sm leading-6 text-slate-700"
+              :class="{ 'text-slate-400 line-through': task.completed }"
+            >{{ task.title }}</label>
           </div>
-          <button @click="confirmAndRemoveTask(index)" class="remove-button">
-            ✖
+          <button
+            @click="confirmAndRemoveTask(index)"
+            aria-label="Remove task"
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-lg leading-none text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500/30 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+          >
+            x
           </button>
         </li>
+        <li v-if="!tasks.length" class="px-6 py-12 text-center">
+          <p class="font-serif text-lg text-slate-700">A fresh start.</p>
+          <p class="mt-1 text-sm text-slate-500">Add one small task to get moving.</p>
+        </li>
       </ul>
-      <TheProgressBar :totalTasks="totalTasks" :completedTasks="completedTasks"></TheProgressBar>
-      <div class="new-task field-row">
-        <input
-          v-model="newTask"
-          type="text"
-          placeholder="Add a new task"
-          @keyup.enter="addTask"
-          class="new-task-input"
-        />
-        <button @click="addTask" class="add-button">
-          Add
-        </button>
+
+      <div class="border-t border-slate-100 bg-slate-50/70 px-5 py-5 sm:px-6">
+        <TheProgressBar :totalTasks="totalTasks" :completedTasks="completedTasks" />
+        <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+          <input
+            v-model="newTask"
+            type="text"
+            placeholder="What would you like to get done?"
+            @keyup.enter="addTask"
+            class="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10"
+          />
+          <button @click="addTask" class="inline-flex items-center justify-center gap-2 rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-700/20">
+            <span aria-hidden="true" class="text-lg font-normal leading-none">+</span>
+            Add task
+          </button>
+        </div>
       </div>
-      <div>
-        <button @click="resetAllTasks" class="reset-button">
-          Reset All Tasks
-        </button>
-      </div>
+    </section>
+
+    <div class="flex justify-end pt-4">
+      <button @click="resetAllTasks" class="rounded-md px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-white/70 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400/30">
+        Reset all tasks
+      </button>
     </div>
-  </div>
+  </main>
 </template>
   
 <script lang="ts">
@@ -182,35 +208,3 @@ export default defineComponent({
   },
 });
 </script>
-
-<style scoped>
-  .window {
-    margin: 10px;
-  }
-
-  .field-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px;
-    border-bottom: 1px solid #ccc;
-    margin: 0 !important;
-  }
-
-  .checkbox {
-    cursor: pointer;
-  }
-
-  .checklist ul {
-    padding: 0;
-  }
-
-  .line-through {
-    text-decoration: line-through;
-  }
-
-  .reset-button {
-    margin-top: 20px;
-    margin-bottom: 14px;
-  }
-</style>
