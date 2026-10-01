@@ -1,6 +1,8 @@
 # better-me
 Tasking Management with AI as an Accountability Coach
 
+![Better Me App](cover.png)
+
 Run an AI Coach locally using Ollama and model of your choice
 
 ## Use Cases
